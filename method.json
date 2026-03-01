@@ -1,4 +1,6 @@
 {
-  "HTTP": "HTTP",
-  "TCP":"TCP"
+  "methods": [
+    {"name":"HTTP","layer":"L7"},
+    {"name":"TCP","layer":"L4"}
+  ]
 }

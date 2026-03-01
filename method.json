@@ -1,4 +1,4 @@
 {
-  "L7": "HTTP",
+  "HTTP": "HTTP",
   "TCP":"TCP"
 }

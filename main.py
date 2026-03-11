@@ -62,6 +62,7 @@ def method_cloudflare(url, port, timeOs):
                 full_url = 'https://' + full_url
             r = session.get(full_url, headers=headers, timeout=8)
         except Exception as e:
+            print(f"erorr ::: {e")
             
             time.sleep(0.5)
 

